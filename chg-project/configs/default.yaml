@@ -1,0 +1,51 @@
+model:
+  name: "gpt2"
+  # Options: gpt2, gpt2-medium, gpt2-large, facebook/opt-125m, 
+  #          meta-llama/Llama-2-7b-hf, mistralai/Mistral-7B-v0.1
+  device: "cuda"
+  dtype: "float32"  # float32 for stability, bfloat16 for efficiency
+
+dataset:
+  name: "wikitext"
+  config: "wikitext-2-raw-v1"
+  split: "train[:1%]"
+  max_length: 256
+  batch_size: 2
+  num_workers: 0
+
+training:
+  epochs: 3
+  learning_rate: 0.01
+  grad_accum_steps: 1
+  seed: 42
+  
+  # Regularization
+  lambda_init: 0.0      # For G0 (initialization)
+  lambda_retain: -0.1   # For G+ (retention)
+  lambda_remove: 0.1    # For G- (removal)
+
+evaluation:
+  mode: "individual"  # individual or sequential
+  ablation_order: "forward"  # forward, backward, random
+  
+  # Default evaluation prompts
+  prompts:
+    - "The capital of France is"
+    - "When Alice met Bob, she gave him a"
+    - "In conclusion, the most important"
+    - "Once upon a time, there was a"
+    - "The quick brown fox jumps over the"
+
+analysis:
+  output_dir: "analysis_output"
+  save_plots: true
+  save_csv: true
+  top_k_heads: 50
+  generate_report: true
+
+paths:
+  gates_init: "checkpoints/gates_init.pt"
+  gates_retain: "checkpoints/gates_retention.pt"
+  gates_remove: "checkpoints/gates_removal.pt"
+  results_dir: "results"
+  plots_dir: "plots"

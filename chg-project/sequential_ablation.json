@@ -1,0 +1,1018 @@
+{
+    "model": "gpt2",
+    "gates_path": "gates_init.pt",
+    "mode": "sequential",
+    "prompts_count": 1,
+    "baseline_logprob": -4.463602542877197,
+    "rankings": [],
+    "sequential_ablation": [
+        {
+            "step": 1,
+            "layer": 0,
+            "head": 0,
+            "ablated_logprob": -4.46162223815918,
+            "cumulative_change": 0.001980304718017578
+        },
+        {
+            "step": 2,
+            "layer": 0,
+            "head": 1,
+            "ablated_logprob": -4.4199299812316895,
+            "cumulative_change": 0.04367256164550781
+        },
+        {
+            "step": 3,
+            "layer": 0,
+            "head": 2,
+            "ablated_logprob": -4.43203067779541,
+            "cumulative_change": 0.03157186508178711
+        },
+        {
+            "step": 4,
+            "layer": 0,
+            "head": 3,
+            "ablated_logprob": -4.436159133911133,
+            "cumulative_change": 0.027443408966064453
+        },
+        {
+            "step": 5,
+            "layer": 0,
+            "head": 4,
+            "ablated_logprob": -4.352078914642334,
+            "cumulative_change": 0.11152362823486328
+        },
+        {
+            "step": 6,
+            "layer": 0,
+            "head": 5,
+            "ablated_logprob": -4.347475051879883,
+            "cumulative_change": 0.11612749099731445
+        },
+        {
+            "step": 7,
+            "layer": 0,
+            "head": 6,
+            "ablated_logprob": -4.369879722595215,
+            "cumulative_change": 0.09372282028198242
+        },
+        {
+            "step": 8,
+            "layer": 0,
+            "head": 7,
+            "ablated_logprob": -4.406141757965088,
+            "cumulative_change": 0.057460784912109375
+        },
+        {
+            "step": 9,
+            "layer": 0,
+            "head": 8,
+            "ablated_logprob": -4.599922180175781,
+            "cumulative_change": -0.13631963729858398
+        },
+        {
+            "step": 10,
+            "layer": 0,
+            "head": 9,
+            "ablated_logprob": -5.34719181060791,
+            "cumulative_change": -0.8835892677307129
+        },
+        {
+            "step": 11,
+            "layer": 0,
+            "head": 10,
+            "ablated_logprob": -5.652645111083984,
+            "cumulative_change": -1.189042568206787
+        },
+        {
+            "step": 12,
+            "layer": 0,
+            "head": 11,
+            "ablated_logprob": -5.817526817321777,
+            "cumulative_change": -1.35392427444458
+        },
+        {
+            "step": 13,
+            "layer": 1,
+            "head": 0,
+            "ablated_logprob": -5.8271894454956055,
+            "cumulative_change": -1.3635869026184082
+        },
+        {
+            "step": 14,
+            "layer": 1,
+            "head": 1,
+            "ablated_logprob": -5.853733062744141,
+            "cumulative_change": -1.3901305198669434
+        },
+        {
+            "step": 15,
+            "layer": 1,
+            "head": 2,
+            "ablated_logprob": -5.856085777282715,
+            "cumulative_change": -1.3924832344055176
+        },
+        {
+            "step": 16,
+            "layer": 1,
+            "head": 3,
+            "ablated_logprob": -5.859023094177246,
+            "cumulative_change": -1.3954205513000488
+        },
+        {
+            "step": 17,
+            "layer": 1,
+            "head": 4,
+            "ablated_logprob": -5.898804187774658,
+            "cumulative_change": -1.435201644897461
+        },
+        {
+            "step": 18,
+            "layer": 1,
+            "head": 5,
+            "ablated_logprob": -5.908874034881592,
+            "cumulative_change": -1.4452714920043945
+        },
+        {
+            "step": 19,
+            "layer": 1,
+            "head": 6,
+            "ablated_logprob": -5.899213790893555,
+            "cumulative_change": -1.4356112480163574
+        },
+        {
+            "step": 20,
+            "layer": 1,
+            "head": 7,
+            "ablated_logprob": -5.92949104309082,
+            "cumulative_change": -1.465888500213623
+        },
+        {
+            "step": 21,
+            "layer": 1,
+            "head": 8,
+            "ablated_logprob": -5.934968948364258,
+            "cumulative_change": -1.4713664054870605
+        },
+        {
+            "step": 22,
+            "layer": 1,
+            "head": 9,
+            "ablated_logprob": -5.945977210998535,
+            "cumulative_change": -1.482374668121338
+        },
+        {
+            "step": 23,
+            "layer": 1,
+            "head": 10,
+            "ablated_logprob": -5.966573238372803,
+            "cumulative_change": -1.5029706954956055
+        },
+        {
+            "step": 24,
+            "layer": 1,
+            "head": 11,
+            "ablated_logprob": -5.98125696182251,
+            "cumulative_change": -1.5176544189453125
+        },
+        {
+            "step": 25,
+            "layer": 2,
+            "head": 0,
+            "ablated_logprob": -5.963508605957031,
+            "cumulative_change": -1.499906063079834
+        },
+        {
+            "step": 26,
+            "layer": 2,
+            "head": 1,
+            "ablated_logprob": -5.980207443237305,
+            "cumulative_change": -1.5166049003601074
+        },
+        {
+            "step": 27,
+            "layer": 2,
+            "head": 2,
+            "ablated_logprob": -5.9740681648254395,
+            "cumulative_change": -1.5104656219482422
+        },
+        {
+            "step": 28,
+            "layer": 2,
+            "head": 3,
+            "ablated_logprob": -5.960587501525879,
+            "cumulative_change": -1.4969849586486816
+        },
+        {
+            "step": 29,
+            "layer": 2,
+            "head": 4,
+            "ablated_logprob": -5.9711833000183105,
+            "cumulative_change": -1.5075807571411133
+        },
+        {
+            "step": 30,
+            "layer": 2,
+            "head": 5,
+            "ablated_logprob": -5.9725847244262695,
+            "cumulative_change": -1.5089821815490723
+        },
+        {
+            "step": 31,
+            "layer": 2,
+            "head": 6,
+            "ablated_logprob": -5.9922003746032715,
+            "cumulative_change": -1.5285978317260742
+        },
+        {
+            "step": 32,
+            "layer": 2,
+            "head": 7,
+            "ablated_logprob": -6.000137805938721,
+            "cumulative_change": -1.5365352630615234
+        },
+        {
+            "step": 33,
+            "layer": 2,
+            "head": 8,
+            "ablated_logprob": -6.00794792175293,
+            "cumulative_change": -1.5443453788757324
+        },
+        {
+            "step": 34,
+            "layer": 2,
+            "head": 9,
+            "ablated_logprob": -6.015546798706055,
+            "cumulative_change": -1.5519442558288574
+        },
+        {
+            "step": 35,
+            "layer": 2,
+            "head": 10,
+            "ablated_logprob": -6.042612075805664,
+            "cumulative_change": -1.5790095329284668
+        },
+        {
+            "step": 36,
+            "layer": 2,
+            "head": 11,
+            "ablated_logprob": -6.048953056335449,
+            "cumulative_change": -1.585350513458252
+        },
+        {
+            "step": 37,
+            "layer": 3,
+            "head": 0,
+            "ablated_logprob": -6.048212051391602,
+            "cumulative_change": -1.5846095085144043
+        },
+        {
+            "step": 38,
+            "layer": 3,
+            "head": 1,
+            "ablated_logprob": -6.050400733947754,
+            "cumulative_change": -1.5867981910705566
+        },
+        {
+            "step": 39,
+            "layer": 3,
+            "head": 2,
+            "ablated_logprob": -6.036942005157471,
+            "cumulative_change": -1.5733394622802734
+        },
+        {
+            "step": 40,
+            "layer": 3,
+            "head": 3,
+            "ablated_logprob": -6.036352157592773,
+            "cumulative_change": -1.5727496147155762
+        },
+        {
+            "step": 41,
+            "layer": 3,
+            "head": 4,
+            "ablated_logprob": -6.032637596130371,
+            "cumulative_change": -1.5690350532531738
+        },
+        {
+            "step": 42,
+            "layer": 3,
+            "head": 5,
+            "ablated_logprob": -6.033174514770508,
+            "cumulative_change": -1.5695719718933105
+        },
+        {
+            "step": 43,
+            "layer": 3,
+            "head": 6,
+            "ablated_logprob": -6.030675411224365,
+            "cumulative_change": -1.567072868347168
+        },
+        {
+            "step": 44,
+            "layer": 3,
+            "head": 7,
+            "ablated_logprob": -6.031886100769043,
+            "cumulative_change": -1.5682835578918457
+        },
+        {
+            "step": 45,
+            "layer": 3,
+            "head": 8,
+            "ablated_logprob": -6.033963680267334,
+            "cumulative_change": -1.5703611373901367
+        },
+        {
+            "step": 46,
+            "layer": 3,
+            "head": 9,
+            "ablated_logprob": -6.039283752441406,
+            "cumulative_change": -1.575681209564209
+        },
+        {
+            "step": 47,
+            "layer": 3,
+            "head": 10,
+            "ablated_logprob": -6.042084693908691,
+            "cumulative_change": -1.5784821510314941
+        },
+        {
+            "step": 48,
+            "layer": 3,
+            "head": 11,
+            "ablated_logprob": -6.046156406402588,
+            "cumulative_change": -1.5825538635253906
+        },
+        {
+            "step": 49,
+            "layer": 4,
+            "head": 0,
+            "ablated_logprob": -6.042855739593506,
+            "cumulative_change": -1.5792531967163086
+        },
+        {
+            "step": 50,
+            "layer": 4,
+            "head": 1,
+            "ablated_logprob": -6.040599346160889,
+            "cumulative_change": -1.5769968032836914
+        },
+        {
+            "step": 51,
+            "layer": 4,
+            "head": 2,
+            "ablated_logprob": -6.045511245727539,
+            "cumulative_change": -1.5819087028503418
+        },
+        {
+            "step": 52,
+            "layer": 4,
+            "head": 3,
+            "ablated_logprob": -6.0500264167785645,
+            "cumulative_change": -1.5864238739013672
+        },
+        {
+            "step": 53,
+            "layer": 4,
+            "head": 4,
+            "ablated_logprob": -6.053565502166748,
+            "cumulative_change": -1.5899629592895508
+        },
+        {
+            "step": 54,
+            "layer": 4,
+            "head": 5,
+            "ablated_logprob": -6.050766944885254,
+            "cumulative_change": -1.5871644020080566
+        },
+        {
+            "step": 55,
+            "layer": 4,
+            "head": 6,
+            "ablated_logprob": -6.055851936340332,
+            "cumulative_change": -1.5922493934631348
+        },
+        {
+            "step": 56,
+            "layer": 4,
+            "head": 7,
+            "ablated_logprob": -6.046813011169434,
+            "cumulative_change": -1.5832104682922363
+        },
+        {
+            "step": 57,
+            "layer": 4,
+            "head": 8,
+            "ablated_logprob": -6.062107086181641,
+            "cumulative_change": -1.5985045433044434
+        },
+        {
+            "step": 58,
+            "layer": 4,
+            "head": 9,
+            "ablated_logprob": -6.066592216491699,
+            "cumulative_change": -1.602989673614502
+        },
+        {
+            "step": 59,
+            "layer": 4,
+            "head": 10,
+            "ablated_logprob": -6.076125144958496,
+            "cumulative_change": -1.6125226020812988
+        },
+        {
+            "step": 60,
+            "layer": 4,
+            "head": 11,
+            "ablated_logprob": -6.076822757720947,
+            "cumulative_change": -1.61322021484375
+        },
+        {
+            "step": 61,
+            "layer": 5,
+            "head": 0,
+            "ablated_logprob": -6.071820259094238,
+            "cumulative_change": -1.608217716217041
+        },
+        {
+            "step": 62,
+            "layer": 5,
+            "head": 1,
+            "ablated_logprob": -6.070245742797852,
+            "cumulative_change": -1.6066431999206543
+        },
+        {
+            "step": 63,
+            "layer": 5,
+            "head": 2,
+            "ablated_logprob": -6.068794250488281,
+            "cumulative_change": -1.605191707611084
+        },
+        {
+            "step": 64,
+            "layer": 5,
+            "head": 3,
+            "ablated_logprob": -6.067276954650879,
+            "cumulative_change": -1.6036744117736816
+        },
+        {
+            "step": 65,
+            "layer": 5,
+            "head": 4,
+            "ablated_logprob": -6.072323322296143,
+            "cumulative_change": -1.6087207794189453
+        },
+        {
+            "step": 66,
+            "layer": 5,
+            "head": 5,
+            "ablated_logprob": -6.072043418884277,
+            "cumulative_change": -1.60844087600708
+        },
+        {
+            "step": 67,
+            "layer": 5,
+            "head": 6,
+            "ablated_logprob": -6.074548721313477,
+            "cumulative_change": -1.6109461784362793
+        },
+        {
+            "step": 68,
+            "layer": 5,
+            "head": 7,
+            "ablated_logprob": -6.088385581970215,
+            "cumulative_change": -1.6247830390930176
+        },
+        {
+            "step": 69,
+            "layer": 5,
+            "head": 8,
+            "ablated_logprob": -6.099081993103027,
+            "cumulative_change": -1.63547945022583
+        },
+        {
+            "step": 70,
+            "layer": 5,
+            "head": 9,
+            "ablated_logprob": -6.1040849685668945,
+            "cumulative_change": -1.6404824256896973
+        },
+        {
+            "step": 71,
+            "layer": 5,
+            "head": 10,
+            "ablated_logprob": -6.106898784637451,
+            "cumulative_change": -1.643296241760254
+        },
+        {
+            "step": 72,
+            "layer": 5,
+            "head": 11,
+            "ablated_logprob": -6.105876922607422,
+            "cumulative_change": -1.6422743797302246
+        },
+        {
+            "step": 73,
+            "layer": 6,
+            "head": 0,
+            "ablated_logprob": -6.1025004386901855,
+            "cumulative_change": -1.6388978958129883
+        },
+        {
+            "step": 74,
+            "layer": 6,
+            "head": 1,
+            "ablated_logprob": -6.1094489097595215,
+            "cumulative_change": -1.6458463668823242
+        },
+        {
+            "step": 75,
+            "layer": 6,
+            "head": 2,
+            "ablated_logprob": -6.102647304534912,
+            "cumulative_change": -1.6390447616577148
+        },
+        {
+            "step": 76,
+            "layer": 6,
+            "head": 3,
+            "ablated_logprob": -6.097977638244629,
+            "cumulative_change": -1.6343750953674316
+        },
+        {
+            "step": 77,
+            "layer": 6,
+            "head": 4,
+            "ablated_logprob": -6.097762107849121,
+            "cumulative_change": -1.6341595649719238
+        },
+        {
+            "step": 78,
+            "layer": 6,
+            "head": 5,
+            "ablated_logprob": -6.095823764801025,
+            "cumulative_change": -1.6322212219238281
+        },
+        {
+            "step": 79,
+            "layer": 6,
+            "head": 6,
+            "ablated_logprob": -6.093671798706055,
+            "cumulative_change": -1.6300692558288574
+        },
+        {
+            "step": 80,
+            "layer": 6,
+            "head": 7,
+            "ablated_logprob": -6.09514045715332,
+            "cumulative_change": -1.631537914276123
+        },
+        {
+            "step": 81,
+            "layer": 6,
+            "head": 8,
+            "ablated_logprob": -6.109163761138916,
+            "cumulative_change": -1.6455612182617188
+        },
+        {
+            "step": 82,
+            "layer": 6,
+            "head": 9,
+            "ablated_logprob": -6.107623100280762,
+            "cumulative_change": -1.6440205574035645
+        },
+        {
+            "step": 83,
+            "layer": 6,
+            "head": 10,
+            "ablated_logprob": -6.109871864318848,
+            "cumulative_change": -1.6462693214416504
+        },
+        {
+            "step": 84,
+            "layer": 6,
+            "head": 11,
+            "ablated_logprob": -6.1083478927612305,
+            "cumulative_change": -1.6447453498840332
+        },
+        {
+            "step": 85,
+            "layer": 7,
+            "head": 0,
+            "ablated_logprob": -6.093631267547607,
+            "cumulative_change": -1.6300287246704102
+        },
+        {
+            "step": 86,
+            "layer": 7,
+            "head": 1,
+            "ablated_logprob": -6.093779563903809,
+            "cumulative_change": -1.6301770210266113
+        },
+        {
+            "step": 87,
+            "layer": 7,
+            "head": 2,
+            "ablated_logprob": -6.089417457580566,
+            "cumulative_change": -1.6258149147033691
+        },
+        {
+            "step": 88,
+            "layer": 7,
+            "head": 3,
+            "ablated_logprob": -6.0862908363342285,
+            "cumulative_change": -1.6226882934570312
+        },
+        {
+            "step": 89,
+            "layer": 7,
+            "head": 4,
+            "ablated_logprob": -6.094914436340332,
+            "cumulative_change": -1.6313118934631348
+        },
+        {
+            "step": 90,
+            "layer": 7,
+            "head": 5,
+            "ablated_logprob": -6.096626281738281,
+            "cumulative_change": -1.633023738861084
+        },
+        {
+            "step": 91,
+            "layer": 7,
+            "head": 6,
+            "ablated_logprob": -6.089897155761719,
+            "cumulative_change": -1.6262946128845215
+        },
+        {
+            "step": 92,
+            "layer": 7,
+            "head": 7,
+            "ablated_logprob": -6.1000471115112305,
+            "cumulative_change": -1.6364445686340332
+        },
+        {
+            "step": 93,
+            "layer": 7,
+            "head": 8,
+            "ablated_logprob": -6.108569145202637,
+            "cumulative_change": -1.6449666023254395
+        },
+        {
+            "step": 94,
+            "layer": 7,
+            "head": 9,
+            "ablated_logprob": -6.109210968017578,
+            "cumulative_change": -1.6456084251403809
+        },
+        {
+            "step": 95,
+            "layer": 7,
+            "head": 10,
+            "ablated_logprob": -6.11339807510376,
+            "cumulative_change": -1.6497955322265625
+        },
+        {
+            "step": 96,
+            "layer": 7,
+            "head": 11,
+            "ablated_logprob": -6.113621711730957,
+            "cumulative_change": -1.6500191688537598
+        },
+        {
+            "step": 97,
+            "layer": 8,
+            "head": 0,
+            "ablated_logprob": -6.102144241333008,
+            "cumulative_change": -1.6385416984558105
+        },
+        {
+            "step": 98,
+            "layer": 8,
+            "head": 1,
+            "ablated_logprob": -6.09453010559082,
+            "cumulative_change": -1.630927562713623
+        },
+        {
+            "step": 99,
+            "layer": 8,
+            "head": 2,
+            "ablated_logprob": -6.091553688049316,
+            "cumulative_change": -1.6279511451721191
+        },
+        {
+            "step": 100,
+            "layer": 8,
+            "head": 3,
+            "ablated_logprob": -6.087919235229492,
+            "cumulative_change": -1.624316692352295
+        },
+        {
+            "step": 101,
+            "layer": 8,
+            "head": 4,
+            "ablated_logprob": -6.0992431640625,
+            "cumulative_change": -1.6356406211853027
+        },
+        {
+            "step": 102,
+            "layer": 8,
+            "head": 5,
+            "ablated_logprob": -6.1010894775390625,
+            "cumulative_change": -1.6374869346618652
+        },
+        {
+            "step": 103,
+            "layer": 8,
+            "head": 6,
+            "ablated_logprob": -6.108541965484619,
+            "cumulative_change": -1.6449394226074219
+        },
+        {
+            "step": 104,
+            "layer": 8,
+            "head": 7,
+            "ablated_logprob": -6.115024089813232,
+            "cumulative_change": -1.6514215469360352
+        },
+        {
+            "step": 105,
+            "layer": 8,
+            "head": 8,
+            "ablated_logprob": -6.115618705749512,
+            "cumulative_change": -1.6520161628723145
+        },
+        {
+            "step": 106,
+            "layer": 8,
+            "head": 9,
+            "ablated_logprob": -6.110685348510742,
+            "cumulative_change": -1.647082805633545
+        },
+        {
+            "step": 107,
+            "layer": 8,
+            "head": 10,
+            "ablated_logprob": -6.122045040130615,
+            "cumulative_change": -1.658442497253418
+        },
+        {
+            "step": 108,
+            "layer": 8,
+            "head": 11,
+            "ablated_logprob": -6.11417293548584,
+            "cumulative_change": -1.6505703926086426
+        },
+        {
+            "step": 109,
+            "layer": 9,
+            "head": 0,
+            "ablated_logprob": -6.114031791687012,
+            "cumulative_change": -1.6504292488098145
+        },
+        {
+            "step": 110,
+            "layer": 9,
+            "head": 1,
+            "ablated_logprob": -6.116391658782959,
+            "cumulative_change": -1.6527891159057617
+        },
+        {
+            "step": 111,
+            "layer": 9,
+            "head": 2,
+            "ablated_logprob": -6.111348628997803,
+            "cumulative_change": -1.6477460861206055
+        },
+        {
+            "step": 112,
+            "layer": 9,
+            "head": 3,
+            "ablated_logprob": -6.109572887420654,
+            "cumulative_change": -1.645970344543457
+        },
+        {
+            "step": 113,
+            "layer": 9,
+            "head": 4,
+            "ablated_logprob": -6.115973949432373,
+            "cumulative_change": -1.6523714065551758
+        },
+        {
+            "step": 114,
+            "layer": 9,
+            "head": 5,
+            "ablated_logprob": -6.121382236480713,
+            "cumulative_change": -1.6577796936035156
+        },
+        {
+            "step": 115,
+            "layer": 9,
+            "head": 6,
+            "ablated_logprob": -6.116823673248291,
+            "cumulative_change": -1.6532211303710938
+        },
+        {
+            "step": 116,
+            "layer": 9,
+            "head": 7,
+            "ablated_logprob": -6.123939514160156,
+            "cumulative_change": -1.660336971282959
+        },
+        {
+            "step": 117,
+            "layer": 9,
+            "head": 8,
+            "ablated_logprob": -6.135132312774658,
+            "cumulative_change": -1.671529769897461
+        },
+        {
+            "step": 118,
+            "layer": 9,
+            "head": 9,
+            "ablated_logprob": -6.133018493652344,
+            "cumulative_change": -1.6694159507751465
+        },
+        {
+            "step": 119,
+            "layer": 9,
+            "head": 10,
+            "ablated_logprob": -6.136235237121582,
+            "cumulative_change": -1.6726326942443848
+        },
+        {
+            "step": 120,
+            "layer": 9,
+            "head": 11,
+            "ablated_logprob": -6.135405540466309,
+            "cumulative_change": -1.6718029975891113
+        },
+        {
+            "step": 121,
+            "layer": 10,
+            "head": 0,
+            "ablated_logprob": -6.13748025894165,
+            "cumulative_change": -1.6738777160644531
+        },
+        {
+            "step": 122,
+            "layer": 10,
+            "head": 1,
+            "ablated_logprob": -6.13265323638916,
+            "cumulative_change": -1.669050693511963
+        },
+        {
+            "step": 123,
+            "layer": 10,
+            "head": 2,
+            "ablated_logprob": -6.127616882324219,
+            "cumulative_change": -1.6640143394470215
+        },
+        {
+            "step": 124,
+            "layer": 10,
+            "head": 3,
+            "ablated_logprob": -6.128111839294434,
+            "cumulative_change": -1.6645092964172363
+        },
+        {
+            "step": 125,
+            "layer": 10,
+            "head": 4,
+            "ablated_logprob": -6.129871845245361,
+            "cumulative_change": -1.666269302368164
+        },
+        {
+            "step": 126,
+            "layer": 10,
+            "head": 5,
+            "ablated_logprob": -6.131564617156982,
+            "cumulative_change": -1.6679620742797852
+        },
+        {
+            "step": 127,
+            "layer": 10,
+            "head": 6,
+            "ablated_logprob": -6.124402046203613,
+            "cumulative_change": -1.660799503326416
+        },
+        {
+            "step": 128,
+            "layer": 10,
+            "head": 7,
+            "ablated_logprob": -6.1272783279418945,
+            "cumulative_change": -1.6636757850646973
+        },
+        {
+            "step": 129,
+            "layer": 10,
+            "head": 8,
+            "ablated_logprob": -6.1285505294799805,
+            "cumulative_change": -1.6649479866027832
+        },
+        {
+            "step": 130,
+            "layer": 10,
+            "head": 9,
+            "ablated_logprob": -6.1357221603393555,
+            "cumulative_change": -1.6721196174621582
+        },
+        {
+            "step": 131,
+            "layer": 10,
+            "head": 10,
+            "ablated_logprob": -6.130245208740234,
+            "cumulative_change": -1.666642665863037
+        },
+        {
+            "step": 132,
+            "layer": 10,
+            "head": 11,
+            "ablated_logprob": -6.130373001098633,
+            "cumulative_change": -1.6667704582214355
+        },
+        {
+            "step": 133,
+            "layer": 11,
+            "head": 0,
+            "ablated_logprob": -6.119859218597412,
+            "cumulative_change": -1.6562566757202148
+        },
+        {
+            "step": 134,
+            "layer": 11,
+            "head": 1,
+            "ablated_logprob": -6.10709810256958,
+            "cumulative_change": -1.6434955596923828
+        },
+        {
+            "step": 135,
+            "layer": 11,
+            "head": 2,
+            "ablated_logprob": -6.105776309967041,
+            "cumulative_change": -1.6421737670898438
+        },
+        {
+            "step": 136,
+            "layer": 11,
+            "head": 3,
+            "ablated_logprob": -6.100048065185547,
+            "cumulative_change": -1.6364455223083496
+        },
+        {
+            "step": 137,
+            "layer": 11,
+            "head": 4,
+            "ablated_logprob": -6.111547470092773,
+            "cumulative_change": -1.6479449272155762
+        },
+        {
+            "step": 138,
+            "layer": 11,
+            "head": 5,
+            "ablated_logprob": -6.138360977172852,
+            "cumulative_change": -1.6747584342956543
+        },
+        {
+            "step": 139,
+            "layer": 11,
+            "head": 6,
+            "ablated_logprob": -6.206590175628662,
+            "cumulative_change": -1.7429876327514648
+        },
+        {
+            "step": 140,
+            "layer": 11,
+            "head": 7,
+            "ablated_logprob": -6.174511432647705,
+            "cumulative_change": -1.7109088897705078
+        },
+        {
+            "step": 141,
+            "layer": 11,
+            "head": 8,
+            "ablated_logprob": -6.18154764175415,
+            "cumulative_change": -1.7179450988769531
+        },
+        {
+            "step": 142,
+            "layer": 11,
+            "head": 9,
+            "ablated_logprob": -6.166763782501221,
+            "cumulative_change": -1.7031612396240234
+        },
+        {
+            "step": 143,
+            "layer": 11,
+            "head": 10,
+            "ablated_logprob": -6.154814720153809,
+            "cumulative_change": -1.6912121772766113
+        },
+        {
+            "step": 144,
+            "layer": 11,
+            "head": 11,
+            "ablated_logprob": -6.174319267272949,
+            "cumulative_change": -1.710716724395752
+        }
+    ]
+}

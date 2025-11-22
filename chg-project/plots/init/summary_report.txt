@@ -1,0 +1,41 @@
+============================================================
+CHG ANALYSIS SUMMARY REPORT
+============================================================
+
+Model Configuration:
+  Layers: 12
+  Heads per layer: 12
+  Total heads: 144
+
+Importance Statistics:
+  Mean: -0.0017
+  Std: 0.0122
+  Min: -0.0982
+  Max: 0.0242
+  Median: -0.0005
+
+Gate Statistics:
+  Mean: 0.8749
+  Std: 0.1730
+  Min: 0.3045
+  Max: 0.9791
+  Median: 0.9592
+  Heads with gates < 0.3: 0 (0.0%)
+  Heads with gates 0.3-0.7: 20 (13.9%)
+  Heads with gates > 0.7: 124 (86.1%)
+
+Top 5 Most Important Heads:
+  1. Layer 11, Head 6: -0.0982
+  2. Layer 11, Head 2: -0.0410
+  3. Layer 1, Head 3: -0.0272
+  4. Layer 11, Head 7: -0.0265
+  5. Layer 4, Head 0: -0.0200
+
+Top 5 Least Important Heads:
+  1. Layer 0, Head 1: 0.0127
+  2. Layer 11, Head 9: 0.0131
+  3. Layer 2, Head 11: 0.0138
+  4. Layer 0, Head 10: 0.0178
+  5. Layer 11, Head 10: 0.0242
+
+============================================================
