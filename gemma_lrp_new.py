@@ -36,6 +36,7 @@ model = AutoModelForCausalLM.from_pretrained(
     MODEL_ID,
     device_map="auto",
     torch_dtype=torch.bfloat16,
+    attn_implementation="eager",  # Force eager attention to enable output_attentions
 )
 model.eval()
 
