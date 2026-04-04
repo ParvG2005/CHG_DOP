@@ -27,15 +27,14 @@ PROMPT = "The capital of France is"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 # SAE configurations available in the repository
-# Format: layer_number: (resid_path, mlp_path or None)
+# Format: layer_number: {sae_type: path}
+# Note: Only residual stream SAEs are available, not MLP-specific ones
 SAE_CONFIGS = {
     45: {
         "resid": "layer_45/dict_16k_k80",
-        "mlp": "layer_45_mlp/dict_16k_k80"
     },
     47: {
         "resid": "layer_47/dict_16k_k80",
-        "mlp": None  # No MLP SAE for layer 47
     },
 }
 LAYERS_TO_ANALYZE = [45, 47]  # Only these layers have SAEs available
@@ -57,7 +56,7 @@ model.eval()
 print(f"Tokenizing prompt: '{PROMPT}'")
 inputs = tokenizer(PROMPT, return_tensors="pt").to(DEVICE)
 
-# Run forward pass, explicitly requesting hidden states and attention matrices
+# Run forward pass, explicitly requesting hidden states and attentions
 print("Running forward pass...")
 outputs = model(**inputs, output_hidden_states=True, output_attentions=True)
 
@@ -65,11 +64,18 @@ hidden_states = outputs.hidden_states
 attentions = outputs.attentions
 logits = outputs.logits
 
+# Debug: Check what we got
+print(f"Hidden states: {len(hidden_states)} layers")
+print(f"Attentions: {len(attentions) if attentions is not None else 'None'}")
+if attentions is not None and len(attentions) > 0:
+    print(f"Attention shape (layer 0): {attentions[0].shape}")
+
 # Retain gradients for LRP calculations
 for h in hidden_states:
     h.retain_grad()
-for a in attentions:
-    a.retain_grad()
+if attentions is not None:
+    for a in attentions:
+        a.retain_grad()
 
 # Get the final predicted next-token
 final_token_logits = logits[0, -1, :]
@@ -153,40 +159,47 @@ with torch.no_grad():
         # B. Attention Attribution (LRP)
         # ------------------------------------------
         # Attention shape: (batch, heads, seq_len, seq_len)
-        # Note: attentions tuple is 0-indexed and contains all layers
-        # For layer_idx (1-indexed), we need attentions[layer_idx - 1]
-        try:
-            # Gemma has layer_idx layers, attentions[0] is layer 1, etc.
-            attn_idx = layer_idx - 1
-            if attn_idx < len(attentions):
-                attn = attentions[attn_idx]
-                attn_grad = attn.grad
+        if attentions is not None and len(attentions) > 0:
+            try:
+                # Gemma has layer_idx layers, attentions[0] is layer 1, etc.
+                attn_idx = layer_idx - 1
+                if attn_idx < len(attentions):
+                    attn = attentions[attn_idx]
+                    
+                    # Check if gradient exists
+                    if attn.grad is None:
+                        print(f"Warning: No gradient for attention at layer {layer_idx}")
+                    else:
+                        attn_grad = attn.grad
 
-                # Relevance = Attention * Gradient (element-wise)
-                attn_relevance = attn * attn_grad
+                        # Relevance = Attention * Gradient (element-wise)
+                        attn_relevance = attn * attn_grad
 
-                # Sum over batch and head dimensions to get an N x N matrix
-                attn_heatmap = attn_relevance[0].sum(dim=0).cpu().numpy()
+                        # Sum over batch and head dimensions to get an N x N matrix
+                        attn_heatmap = attn_relevance[0].sum(dim=0).cpu().numpy()
 
-                # Plot Heatmap
-                plt.figure(figsize=(8, 6))
-                sns.heatmap(
-                    attn_heatmap,
-                    cmap="coolwarm",
-                    center=0,
-                    xticklabels=tokenizer.convert_ids_to_tokens(inputs.input_ids[0]),
-                    yticklabels=tokenizer.convert_ids_to_tokens(inputs.input_ids[0]),
-                )
-                plt.title(f"Attention LRP Heatmap - Layer {layer_idx}")
-                plt.xlabel("Key Tokens")
-                plt.ylabel("Query Tokens")
-                plt.tight_layout()
-                plt.savefig(f"heatmaps/layer_{layer_idx}_attention_lrp.png")
-                plt.close()
-            else:
-                print(f"Warning: Attention index {attn_idx} out of range (max: {len(attentions)-1})")
-        except Exception as e:
-            print(f"Warning: Could not process attention for layer {layer_idx}. Error: {e}")
+                        # Plot Heatmap
+                        plt.figure(figsize=(8, 6))
+                        sns.heatmap(
+                            attn_heatmap,
+                            cmap="coolwarm",
+                            center=0,
+                            xticklabels=tokenizer.convert_ids_to_tokens(inputs.input_ids[0]),
+                            yticklabels=tokenizer.convert_ids_to_tokens(inputs.input_ids[0]),
+                        )
+                        plt.title(f"Attention LRP Heatmap - Layer {layer_idx}")
+                        plt.xlabel("Key Tokens")
+                        plt.ylabel("Query Tokens")
+                        plt.tight_layout()
+                        plt.savefig(f"heatmaps/layer_{layer_idx}_attention_lrp.png")
+                        plt.close()
+                        print(f"Saved attention heatmap for layer {layer_idx}")
+                else:
+                    print(f"Warning: Attention index {attn_idx} out of range (max: {len(attentions)-1})")
+            except Exception as e:
+                print(f"Warning: Could not process attention for layer {layer_idx}. Error: {e}")
+        else:
+            print(f"Skipping attention analysis for layer {layer_idx} (attentions not available)")
 
         # ------------------------------------------
         # C. Sparse Autoencoder (SAE) Projection
@@ -217,7 +230,8 @@ with torch.no_grad():
                     sae_config = json.load(f)
                 
                 # Extract encoder weight: shape [dict_size, activation_dim]
-                encoder_weight = ae_data['encoder.weight'].to(DEVICE)
+                # Convert to bfloat16 to match hidden states dtype
+                encoder_weight = ae_data['encoder.weight'].to(DEVICE).to(torch.bfloat16)
                 
                 print(f"Loaded {sae_type.upper()} SAE with {sae_config['trainer']['dict_size']} features")
 
