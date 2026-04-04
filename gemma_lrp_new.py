@@ -183,5 +183,20 @@ with torch.no_grad():
 
             except Exception as e:
                 print(f"SAE Error: {e}")
+                sae_results = []
+        
+        # E. Export analysis data to JSON
+        export_data = {
+            "layer": layer_idx,
+            "prompt": PROMPT,
+            "predicted_token": predicted_word,
+            "logit_lens_top5": top_5_words,
+            "ai_explanation": explanation,
+            "sae_top10_features": sae_results if 'sae_results' in locals() else []
+        }
+        
+        with open(f"sae_json/layer_{layer_idx}_analysis.json", "w") as f:
+            json.dump(export_data, f, indent=2)
+        print(f"Exported analysis to sae_json/layer_{layer_idx}_analysis.json")
 
 print("\nAnalysis Finished.")
