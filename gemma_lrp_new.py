@@ -5,7 +5,7 @@ import torch.nn.functional as F
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from transformers import Gemma3ForConditionalGeneration, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer
 from huggingface_hub import hf_hub_download
 
 # ==========================================
@@ -32,7 +32,7 @@ setup_directories()
 
 print(f"Loading Gemma-3-27b-it...")
 tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
-model = Gemma3ForConditionalGeneration.from_pretrained(
+model = AutoModelForCausalLM.from_pretrained(
     MODEL_ID,
     device_map="auto",
     torch_dtype=torch.bfloat16,
@@ -45,7 +45,7 @@ model.eval()
 print(f"Analyzing prompt: '{PROMPT}'")
 inputs = tokenizer(PROMPT, return_tensors="pt").to(DEVICE)
 
-# Correct Path: Gemma3ForConditionalGeneration -> model (Gemma3Model)
+# Get hidden states (matching SAE training setup)
 outputs = model(
     **inputs,
     output_hidden_states=True, 
@@ -86,8 +86,8 @@ with torch.no_grad():
 
         # A. Logit Lens using model.model.layers
         try:
-            # Gemma-3 layers are at model.language_model.model.layers
-            target_block = model.language_model.model.layers[layer_idx]
+            # For AutoModelForCausalLM: model.model.layers
+            target_block = model.model.layers[layer_idx]
             h_raw = hidden_states[layer_idx][0, -1, :].unsqueeze(0).unsqueeze(0)
             
             # Apply layer-specific RMSNorm
