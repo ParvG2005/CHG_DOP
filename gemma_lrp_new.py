@@ -105,17 +105,25 @@ with torch.no_grad():
         # ------------------------------------------
         # A. Logit Lens & AI Self-Explanation
         # ------------------------------------------
-        # Apply LayerNorm and LM Head
-        # Handle different normalization layer names across Gemma versions
-        if hasattr(model.model, 'norm'):
-            normed_h = model.model.norm(h_last)
-        elif hasattr(model.model, 'final_norm'):
-            normed_h = model.model.final_norm(h_last)
-        elif hasattr(model.model, 'layer_norm'):
-            normed_h = model.model.layer_norm(h_last)
-        else:
-            # If no norm layer found, use the hidden state directly
-            print(f"Warning: No normalization layer found, using raw hidden state")
+        # Apply RMSNorm and LM Head
+        # Gemma uses RMSNorm as the final normalization layer
+        # RMSNorm expects shape (batch, seq_len, hidden_dim)
+        try:
+            # Access the final RMSNorm layer: model.model.norm
+            if hasattr(model.model, 'norm'):
+                # Add batch and sequence dimensions: (hidden_dim) -> (1, 1, hidden_dim)
+                h_last_expanded = h_last.unsqueeze(0).unsqueeze(0)
+                normed_h_expanded = model.model.norm(h_last_expanded)
+                # Remove the added dimensions: (1, 1, hidden_dim) -> (hidden_dim)
+                normed_h = normed_h_expanded.squeeze(0).squeeze(0)
+            else:
+                # Fallback: try to access it through the model structure
+                h_last_expanded = h_last.unsqueeze(0).unsqueeze(0)
+                normed_h_expanded = model.model.layers[-1].post_attention_layernorm(h_last_expanded)
+                normed_h = normed_h_expanded.squeeze(0).squeeze(0)
+                print(f"Warning: Using post_attention_layernorm as fallback")
+        except Exception as e:
+            print(f"Warning: Could not apply normalization ({e}), using raw hidden state")
             normed_h = h_last
         
         lens_logits = model.lm_head(normed_h)
@@ -145,30 +153,40 @@ with torch.no_grad():
         # B. Attention Attribution (LRP)
         # ------------------------------------------
         # Attention shape: (batch, heads, seq_len, seq_len)
-        attn = attentions[layer_idx - 1]  # 0-indexed in the tuple
-        attn_grad = attn.grad
+        # Note: attentions tuple is 0-indexed and contains all layers
+        # For layer_idx (1-indexed), we need attentions[layer_idx - 1]
+        try:
+            # Gemma has layer_idx layers, attentions[0] is layer 1, etc.
+            attn_idx = layer_idx - 1
+            if attn_idx < len(attentions):
+                attn = attentions[attn_idx]
+                attn_grad = attn.grad
 
-        # Relevance = Attention * Gradient (element-wise)
-        attn_relevance = attn * attn_grad
+                # Relevance = Attention * Gradient (element-wise)
+                attn_relevance = attn * attn_grad
 
-        # Sum over batch and head dimensions to get an N x N matrix
-        attn_heatmap = attn_relevance[0].sum(dim=0).cpu().numpy()
+                # Sum over batch and head dimensions to get an N x N matrix
+                attn_heatmap = attn_relevance[0].sum(dim=0).cpu().numpy()
 
-        # Plot Heatmap
-        plt.figure(figsize=(8, 6))
-        sns.heatmap(
-            attn_heatmap,
-            cmap="coolwarm",
-            center=0,
-            xticklabels=tokenizer.convert_ids_to_tokens(inputs.input_ids[0]),
-            yticklabels=tokenizer.convert_ids_to_tokens(inputs.input_ids[0]),
-        )
-        plt.title(f"Attention LRP Heatmap - Layer {layer_idx}")
-        plt.xlabel("Key Tokens")
-        plt.ylabel("Query Tokens")
-        plt.tight_layout()
-        plt.savefig(f"heatmaps/layer_{layer_idx}_attention_lrp.png")
-        plt.close()
+                # Plot Heatmap
+                plt.figure(figsize=(8, 6))
+                sns.heatmap(
+                    attn_heatmap,
+                    cmap="coolwarm",
+                    center=0,
+                    xticklabels=tokenizer.convert_ids_to_tokens(inputs.input_ids[0]),
+                    yticklabels=tokenizer.convert_ids_to_tokens(inputs.input_ids[0]),
+                )
+                plt.title(f"Attention LRP Heatmap - Layer {layer_idx}")
+                plt.xlabel("Key Tokens")
+                plt.ylabel("Query Tokens")
+                plt.tight_layout()
+                plt.savefig(f"heatmaps/layer_{layer_idx}_attention_lrp.png")
+                plt.close()
+            else:
+                print(f"Warning: Attention index {attn_idx} out of range (max: {len(attentions)-1})")
+        except Exception as e:
+            print(f"Warning: Could not process attention for layer {layer_idx}. Error: {e}")
 
         # ------------------------------------------
         # C. Sparse Autoencoder (SAE) Projection
