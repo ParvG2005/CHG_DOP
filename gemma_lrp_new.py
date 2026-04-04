@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from sae_lens import SAE
+from huggingface_hub import hf_hub_download
 
 
 # ==========================================
@@ -22,9 +22,23 @@ def setup_directories():
 
 # Configuration
 MODEL_ID = "google/gemma-3-27b-it"
-SAE_RELEASE = "uzaymacar/gemma-3-27b-saes"
+SAE_REPO = "uzaymacar/gemma-3-27b-saes"
 PROMPT = "The capital of France is"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+
+# SAE configurations available in the repository
+# Format: layer_number: (resid_path, mlp_path or None)
+SAE_CONFIGS = {
+    45: {
+        "resid": "layer_45/dict_16k_k80",
+        "mlp": "layer_45_mlp/dict_16k_k80"
+    },
+    47: {
+        "resid": "layer_47/dict_16k_k80",
+        "mlp": None  # No MLP SAE for layer 47
+    },
+}
+LAYERS_TO_ANALYZE = [45, 47]  # Only these layers have SAEs available
 
 setup_directories()
 
@@ -77,8 +91,8 @@ num_layers = len(hidden_states) - 1
 # ==========================================
 # We wrap the loop in no_grad to prevent OOM when doing generation inside
 with torch.no_grad():
-    for layer_idx in range(1, num_layers + 1):
-        print(f"\n--- Processing Layer {layer_idx}/{num_layers} ---")
+    for layer_idx in LAYERS_TO_ANALYZE:
+        print(f"\n--- Processing Layer {layer_idx} (SAE Available) ---")
 
         # Extract activations and gradients for the final token position
         h = hidden_states[layer_idx]
@@ -92,7 +106,18 @@ with torch.no_grad():
         # A. Logit Lens & AI Self-Explanation
         # ------------------------------------------
         # Apply LayerNorm and LM Head
-        normed_h = model.model.norm(h_last)
+        # Handle different normalization layer names across Gemma versions
+        if hasattr(model.model, 'norm'):
+            normed_h = model.model.norm(h_last)
+        elif hasattr(model.model, 'final_norm'):
+            normed_h = model.model.final_norm(h_last)
+        elif hasattr(model.model, 'layer_norm'):
+            normed_h = model.model.layer_norm(h_last)
+        else:
+            # If no norm layer found, use the hidden state directly
+            print(f"Warning: No normalization layer found, using raw hidden state")
+            normed_h = h_last
+        
         lens_logits = model.lm_head(normed_h)
 
         # Get top 5 tokens
@@ -148,62 +173,86 @@ with torch.no_grad():
         # ------------------------------------------
         # C. Sparse Autoencoder (SAE) Projection
         # ------------------------------------------
-        # Load layer-specific SAE
-        sae_id = f"layer_{layer_idx}_resid_post"
-        try:
-            # sae_lens uses a specific loading mechanism
-            sae, _, _ = SAE.from_pretrained(
-                release=SAE_RELEASE, sae_id=sae_id, device=DEVICE
-            )
-
-            # Element-wise relevance vector
-            relevance_vector = h_last * h_grad_last
-
-            # Project onto the SAE Encoder Weights to get feature relevance
-            # sae.W_enc shape is typically (d_model, d_sae)
-            feature_relevance = torch.matmul(relevance_vector, sae.W_enc)
-
-            # Extract top 15 features
-            top_15_scores, top_15_indices = torch.topk(feature_relevance.abs(), 15)
-            # Use original signed scores for the top indices
-            top_15_actual_scores = feature_relevance[top_15_indices]
-
-            features_data = []
-            for score, feat_id in zip(top_15_actual_scores, top_15_indices):
-                feat_id_val = feat_id.item()
-                features_data.append(
-                    {
-                        "feature_id": feat_id_val,
-                        "score": float(score.item()),
-                        "neuronpedia_url": f"https://www.neuronpedia.org/gemma-3-27b/{layer_idx}/{feat_id_val}",
-                    }
+        # Process both residual stream and MLP SAEs if available
+        all_sae_features = {}
+        
+        for sae_type in ["resid", "mlp"]:
+            sae_path = SAE_CONFIGS[layer_idx].get(sae_type)
+            if sae_path is None:
+                continue
+                
+            try:
+                print(f"Loading {sae_type.upper()} SAE for layer {layer_idx}...")
+                # Download SAE weights and config from HuggingFace Hub
+                ae_file = hf_hub_download(
+                    repo_id=SAE_REPO,
+                    filename=f"{sae_path}/ae.pt",
                 )
+                config_file = hf_hub_download(
+                    repo_id=SAE_REPO,
+                    filename=f"{sae_path}/config.json",
+                )
+                
+                # Load SAE weights
+                ae_data = torch.load(ae_file, map_location=DEVICE)
+                with open(config_file, 'r') as f:
+                    sae_config = json.load(f)
+                
+                # Extract encoder weight: shape [dict_size, activation_dim]
+                encoder_weight = ae_data['encoder.weight'].to(DEVICE)
+                
+                print(f"Loaded {sae_type.upper()} SAE with {sae_config['trainer']['dict_size']} features")
 
-            # Plot Bar Chart
-            plt.figure(figsize=(10, 8))
-            y_pos = np.arange(len(features_data))
-            scores = [f["score"] for f in features_data]
-            labels = [f"Feature {f['feature_id']}" for f in features_data]
+                # Element-wise relevance vector
+                relevance_vector = h_last * h_grad_last
 
-            plt.barh(
-                y_pos,
-                scores,
-                align="center",
-                color=["red" if s < 0 else "blue" for s in scores],
-            )
-            plt.yticks(y_pos, labels)
-            plt.gca().invert_yaxis()  # Highest scores at the top
-            plt.xlabel("Relevance Score ($R_l \cdot W_{enc}$)")
-            plt.title(f"Top 15 SAE Features - Layer {layer_idx}")
-            plt.tight_layout()
-            plt.savefig(f"sae_plots/layer_{layer_idx}_sae_features.png")
-            plt.close()
+                # Project onto the SAE Encoder Weights to get feature relevance
+                # encoder_weight shape is (dict_size, d_model), so we need to transpose
+                feature_relevance = torch.matmul(relevance_vector, encoder_weight.t())
 
-        except Exception as e:
-            print(
-                f"Warning: Could not load or process SAE for layer {layer_idx}. Error: {e}"
-            )
-            features_data = [{"error": str(e)}]
+                # Extract top 15 features
+                top_15_scores, top_15_indices = torch.topk(feature_relevance.abs(), 15)
+                # Use original signed scores for the top indices
+                top_15_actual_scores = feature_relevance[top_15_indices]
+
+                features_data = []
+                for score, feat_id in zip(top_15_actual_scores, top_15_indices):
+                    feat_id_val = feat_id.item()
+                    features_data.append(
+                        {
+                            "feature_id": feat_id_val,
+                            "score": float(score.item()),
+                            "neuronpedia_url": f"https://www.neuronpedia.org/gemma-3-27b/{layer_idx}/{feat_id_val}",
+                        }
+                    )
+
+                # Plot Bar Chart
+                plt.figure(figsize=(10, 8))
+                y_pos = np.arange(len(features_data))
+                scores = [f["score"] for f in features_data]
+                labels = [f"Feature {f['feature_id']}" for f in features_data]
+
+                plt.barh(
+                    y_pos,
+                    scores,
+                    align="center",
+                    color=["red" if s < 0 else "blue" for s in scores],
+                )
+                plt.yticks(y_pos, labels)
+                plt.gca().invert_yaxis()  # Highest scores at the top
+                plt.xlabel("Relevance Score ($R_l \cdot W_{enc}$)")
+                plt.title(f"Top 15 SAE Features - Layer {layer_idx} ({sae_type.upper()})")
+                plt.tight_layout()
+                plt.savefig(f"sae_plots/layer_{layer_idx}_{sae_type}_sae_features.png")
+                plt.close()
+                
+                all_sae_features[sae_type] = features_data
+
+            except Exception as e:
+                print(
+                    f"Warning: Could not load or process {sae_type.upper()} SAE for layer {layer_idx}. Error: {e}"
+                )
+                all_sae_features[sae_type] = [{"error": str(e)}]
 
         # ------------------------------------------
         # D. Data Export
@@ -214,7 +263,7 @@ with torch.no_grad():
             "final_predicted_word": predicted_word,
             "top_5_logit_lens_words": top_5_words,
             "ai_self_explanation": explanation,
-            "top_15_sae_features": features_data,
+            "sae_features": all_sae_features,
         }
 
         with open(f"sae_json/layer_{layer_idx}_data.json", "w") as f:
