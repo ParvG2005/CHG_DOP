@@ -114,25 +114,34 @@ with torch.no_grad():
         # Apply RMSNorm and LM Head
         # Gemma-3 is multimodal: language model is at model.language_model.model
         # RMSNorm expects shape (batch, seq_len, hidden_dim)
-        try:
+        # try:
             # Access the final RMSNorm layer for Gemma3ForConditionalGeneration
             # Path: model.language_model.model.norm
-            if hasattr(model, 'language_model'):
-                # Gemma-3 multimodal architecture
-                h_last_expanded = h_last.unsqueeze(0).unsqueeze(0)
-                normed_h_expanded = model.language_model.model.norm(h_last_expanded)
-                normed_h = normed_h_expanded.squeeze(0).squeeze(0)
-            elif hasattr(model.model, 'norm'):
-                # Gemma-2 text-only architecture
-                h_last_expanded = h_last.unsqueeze(0).unsqueeze(0)
-                normed_h_expanded = model.model.norm(h_last_expanded)
-                normed_h = normed_h_expanded.squeeze(0).squeeze(0)
-            else:
-                raise AttributeError("Could not find normalization layer")
+            # if hasattr(model, 'language_model'):
+            #     # Gemma-3 multimodal architecture
+            #     h_last_expanded = h_last.unsqueeze(0).unsqueeze(0)
+            #     normed_h_expanded = model.language_model.model.norm(h_last_expanded)
+            #     normed_h = normed_h_expanded.squeeze(0).squeeze(0)
+            # elif hasattr(model.model, 'norm'):
+            #     # Gemma-2 text-only architecture
+            #     h_last_expanded = h_last.unsqueeze(0).unsqueeze(0)
+            #     normed_h_expanded = model.model.norm(h_last_expanded)
+            #     normed_h = normed_h_expanded.squeeze(0).squeeze(0)
+            # else:
+            #     raise AttributeError("Could not find normalization layer")
+        # except Exception as e:
+        #     print(f"Warning: Could not apply normalization ({e}), using raw hidden state")
+        #     normed_h = h_last
+        try:
+            # Gemma-3 text layers are inside language_model.model.layers
+            # We use the specific layer's input_layernorm for a more accurate Logit Lens
+            target_layer = model.language_model.model.layers[layer_idx]
+            h_last_expanded = h_last.unsqueeze(0).unsqueeze(0)
+            normed_h_expanded = target_layer.input_layernorm(h_last_expanded)
+            normed_h = normed_h_expanded.squeeze(0).squeeze(0)
         except Exception as e:
             print(f"Warning: Could not apply normalization ({e}), using raw hidden state")
             normed_h = h_last
-        
         lens_logits = model.lm_head(normed_h)
 
         # Get top 5 tokens
@@ -226,7 +235,10 @@ with torch.no_grad():
                 )
                 
                 # Load SAE weights
-                ae_data = torch.load(ae_file, map_location=DEVICE)
+                #ae_data = torch.load(ae_file, map_location=DEVICE)
+                checkpoint = torch.load(ae_file, map_location=DEVICE)
+                # Handle nested 'ae' key for Layer 47 type checkpoints
+                ae_data = checkpoint['ae'] if 'ae' in checkpoint else checkpoint
                 with open(config_file, 'r') as f:
                     sae_config = json.load(f)
                 
@@ -252,7 +264,13 @@ with torch.no_grad():
 
                 # Project onto the SAE Encoder Weights to get feature relevance
                 # encoder_weight shape is (dict_size, d_model), so we need to transpose
-                feature_relevance = torch.matmul(relevance_vector, encoder_weight.t())
+                # feature_relevance = torch.matmul(relevance_vector, encoder_weight.t())
+                
+                # 1. Project the normalized activation into SAE space
+                feature_activations = torch.matmul(normed_h, encoder_weight.t())
+                # 2. Scale by the gradient's alignment (Attribution)
+                # This shows which SAE features actually drove the 'Paris' prediction
+                feature_relevance = feature_activations * torch.matmul(h_grad_last, encoder_weight.t())
 
                 # Extract top 15 features
                 top_15_scores, top_15_indices = torch.topk(feature_relevance.abs(), 15)
