@@ -86,8 +86,8 @@ with torch.no_grad():
 
         # A. Logit Lens using model.model.layers
         try:
-            # Gemma-3 layers are at model.model.layers
-            target_block = model.model.layers[layer_idx]
+            # Gemma-3 layers are at model.language_model.model.layers
+            target_block = model.language_model.model.layers[layer_idx]
             h_raw = hidden_states[layer_idx][0, -1, :].unsqueeze(0).unsqueeze(0)
             
             # Apply layer-specific RMSNorm
