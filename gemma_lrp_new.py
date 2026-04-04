@@ -43,19 +43,30 @@ model.eval()
 print(f"\nModel class: {model.__class__.__name__}")
 print(f"Model.model class: {model.model.__class__.__name__}")
 
-# Find the correct path to layers
+# Find the correct path to layers - check all possibilities
+LAYER_PATH = None
+
+# Check direct path
 if hasattr(model.model, 'layers'):
     print(" Layers at: model.model.layers")
     LAYER_PATH = lambda m: m.model.layers
+# Check text_model path
 elif hasattr(model.model, 'text_model') and hasattr(model.model.text_model, 'layers'):
     print(" Layers at: model.model.text_model.layers")
     LAYER_PATH = lambda m: m.model.text_model.layers
-elif hasattr(model.model, 'language_model') and hasattr(model.model.language_model, 'model'):
-    print(" Layers at: model.model.language_model.model.layers")
-    LAYER_PATH = lambda m: m.model.language_model.model.layers
-else:
+# Check language_model.model path (Gemma3Model multimodal)
+elif hasattr(model.model, 'language_model'):
+    lang_model = model.model.language_model
+    if hasattr(lang_model, 'model') and hasattr(lang_model.model, 'layers'):
+        print(" Layers at: model.model.language_model.model.layers")
+        LAYER_PATH = lambda m: m.model.language_model.model.layers
+    elif hasattr(lang_model, 'layers'):
+        print(" Layers at: model.model.language_model.layers")
+        LAYER_PATH = lambda m: m.model.language_model.layers
+
+if LAYER_PATH is None:
     print(" Could not find layers!")
-    LAYER_PATH = None
+    print(f"Available attributes in model.model: {[a for a in dir(model.model) if not a.startswith('_')][:30]}")
 
 # ==========================================
 # 2. Forward & Backward Pass
