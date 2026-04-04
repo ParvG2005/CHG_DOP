@@ -39,10 +39,28 @@ model = AutoModelForCausalLM.from_pretrained(
 )
 model.eval()
 
+# Inspect actual model structure
+print(f"\nModel class: {model.__class__.__name__}")
+print(f"Model.model class: {model.model.__class__.__name__}")
+
+# Find the correct path to layers
+if hasattr(model.model, 'layers'):
+    print(" Layers at: model.model.layers")
+    LAYER_PATH = lambda m: m.model.layers
+elif hasattr(model.model, 'text_model') and hasattr(model.model.text_model, 'layers'):
+    print(" Layers at: model.model.text_model.layers")
+    LAYER_PATH = lambda m: m.model.text_model.layers
+elif hasattr(model.model, 'language_model') and hasattr(model.model.language_model, 'model'):
+    print(" Layers at: model.model.language_model.model.layers")
+    LAYER_PATH = lambda m: m.model.language_model.model.layers
+else:
+    print(" Could not find layers!")
+    LAYER_PATH = None
+
 # ==========================================
 # 2. Forward & Backward Pass
 # ==========================================
-print(f"Analyzing prompt: '{PROMPT}'")
+print(f"\nAnalyzing prompt: '{PROMPT}'")
 inputs = tokenizer(PROMPT, return_tensors="pt").to(DEVICE)
 
 # Get hidden states (matching SAE training setup)
@@ -84,10 +102,12 @@ with torch.no_grad():
     for layer_idx in LAYERS_TO_ANALYZE:
         print(f"\n--- Layer {layer_idx} Analysis ---")
 
-        # A. Logit Lens using model.model.layers
+        # A. Logit Lens using dynamically detected layer path
         try:
-            # For AutoModelForCausalLM: model.model.layers
-            target_block = model.model.layers[layer_idx]
+            # Use the detected layer path
+            if LAYER_PATH is None:
+                raise AttributeError("Could not find layers in model structure")
+            target_block = LAYER_PATH(model)[layer_idx]
             h_raw = hidden_states[layer_idx][0, -1, :].unsqueeze(0).unsqueeze(0)
             
             # Apply layer-specific RMSNorm
