@@ -112,22 +112,23 @@ with torch.no_grad():
         # A. Logit Lens & AI Self-Explanation
         # ------------------------------------------
         # Apply RMSNorm and LM Head
-        # Gemma uses RMSNorm as the final normalization layer
+        # Gemma-3 is multimodal: language model is at model.language_model.model
         # RMSNorm expects shape (batch, seq_len, hidden_dim)
         try:
-            # Access the final RMSNorm layer: model.model.norm
-            if hasattr(model.model, 'norm'):
-                # Add batch and sequence dimensions: (hidden_dim) -> (1, 1, hidden_dim)
+            # Access the final RMSNorm layer for Gemma3ForConditionalGeneration
+            # Path: model.language_model.model.norm
+            if hasattr(model, 'language_model'):
+                # Gemma-3 multimodal architecture
+                h_last_expanded = h_last.unsqueeze(0).unsqueeze(0)
+                normed_h_expanded = model.language_model.model.norm(h_last_expanded)
+                normed_h = normed_h_expanded.squeeze(0).squeeze(0)
+            elif hasattr(model.model, 'norm'):
+                # Gemma-2 text-only architecture
                 h_last_expanded = h_last.unsqueeze(0).unsqueeze(0)
                 normed_h_expanded = model.model.norm(h_last_expanded)
-                # Remove the added dimensions: (1, 1, hidden_dim) -> (hidden_dim)
                 normed_h = normed_h_expanded.squeeze(0).squeeze(0)
             else:
-                # Fallback: try to access it through the model structure
-                h_last_expanded = h_last.unsqueeze(0).unsqueeze(0)
-                normed_h_expanded = model.model.layers[-1].post_attention_layernorm(h_last_expanded)
-                normed_h = normed_h_expanded.squeeze(0).squeeze(0)
-                print(f"Warning: Using post_attention_layernorm as fallback")
+                raise AttributeError("Could not find normalization layer")
         except Exception as e:
             print(f"Warning: Could not apply normalization ({e}), using raw hidden state")
             normed_h = h_last
@@ -229,9 +230,20 @@ with torch.no_grad():
                 with open(config_file, 'r') as f:
                     sae_config = json.load(f)
                 
+                # Debug: Check available keys in state dict
+                print(f"SAE state dict keys: {list(ae_data.keys())}")
+                
                 # Extract encoder weight: shape [dict_size, activation_dim]
+                # The key might be 'encoder.weight', 'W_enc', or similar
+                if 'encoder.weight' in ae_data:
+                    encoder_weight = ae_data['encoder.weight']
+                elif 'W_enc' in ae_data:
+                    encoder_weight = ae_data['W_enc']
+                else:
+                    raise KeyError(f"Could not find encoder weight. Available keys: {list(ae_data.keys())}")
+                
                 # Convert to bfloat16 to match hidden states dtype
-                encoder_weight = ae_data['encoder.weight'].to(DEVICE).to(torch.bfloat16)
+                encoder_weight = encoder_weight.to(DEVICE).to(torch.bfloat16)
                 
                 print(f"Loaded {sae_type.upper()} SAE with {sae_config['trainer']['dict_size']} features")
 
