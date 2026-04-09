@@ -105,69 +105,31 @@ outputs = model(
     output_attentions=False  # Critical: saves ~15-20GB on 70B model
 )
 
-# CRITICAL: Move hidden states to CPU immediately to free GPU memory
-# Only keep SAE layer on GPU for gradient computation
+# CRITICAL: Move ALL hidden states to CPU immediately to free GPU memory
 print("Moving hidden states to CPU to free GPU memory...")
-hidden_states_cpu = []
-for i, h in enumerate(outputs.hidden_states):
-    if i == SAE_LAYER:
-        # Keep SAE layer on GPU and enable gradients
-        h_gpu = h.clone().detach().requires_grad_(True)
-        h_gpu.retain_grad()
-        hidden_states_cpu.append(h_gpu)
-    else:
-        # Move other layers to CPU
-        hidden_states_cpu.append(h.detach().cpu())
-
+hidden_states_cpu = [h.detach().cpu() for h in outputs.hidden_states]
 hidden_states = hidden_states_cpu
 attentions = None  # Not needed
 
+# Get logits for prediction
+logits = outputs.logits
+final_token_logits = logits[0, -1, :]
+predicted_token_id = torch.argmax(final_token_logits).item()
+predicted_word = tokenizer.decode(predicted_token_id)
+print(f"Model predicted first token: '{predicted_word}'")
+
 # Clear the original outputs to free memory
-del outputs
+del outputs, logits, final_token_logits
 torch.cuda.empty_cache()
 gc.collect()
 
-print(f"Memory optimization: Only layer {SAE_LAYER} kept on GPU with gradients")
+print(f"Memory optimization: All hidden states moved to CPU, no backward pass")
+print(f"Note: SAE analysis will use activation magnitudes only (no gradients)")
 
-# ── Get prediction and run backward pass ─────────────────────────────────────
-print("Running backward pass (this may take a while with gradient checkpointing)...")
-
-# Run a fresh forward pass just for the backward (hidden states already saved)
-with torch.enable_grad():
-    # Only track gradients for layer 50's hidden state
-    outputs_for_backward = model(
-        **inputs,
-        output_hidden_states=False,  # Don't need to store all hidden states again
-        output_attentions=False
-    )
-    
-    logits = outputs_for_backward.logits
-    final_token_logits = logits[0, -1, :]
-    predicted_token_id = torch.argmax(final_token_logits).item()
-    predicted_word = tokenizer.decode(predicted_token_id)
-    print(f"Model predicted first token: '{predicted_word}'")
-    
-    # Clear cache before backward
-    torch.cuda.empty_cache()
-    gc.collect()
-    
-    model.zero_grad()
-    # Backward pass - gradient checkpointing will recompute activations
-    final_token_logits[predicted_token_id].backward()
-    
-    # Extract gradient from layer 50 before clearing
-    if hidden_states[SAE_LAYER].grad is not None:
-        sae_layer_grad = hidden_states[SAE_LAYER].grad.clone().cpu()
-    else:
-        sae_layer_grad = None
-        print(f"WARNING: No gradient computed for layer {SAE_LAYER}")
-    
-    # Clear everything
-    del outputs_for_backward, logits, final_token_logits
-    torch.cuda.empty_cache()
-    gc.collect()
-
-print("Backward pass complete, GPU memory freed")
+# ── Skip backward pass to avoid OOM ──────────────────────────────────────────
+print("\nSkipping backward pass to avoid OOM on 70B model")
+print("SAE analysis will use activation-based feature importance instead")
+sae_layer_grad = None  # No gradients available
 
 # ── Pass 1: collect logit-lens data for every layer (no generate calls here) ──
 print("\nCollecting logit-lens data for all layers ...")
@@ -296,41 +258,37 @@ for layer_idx in LAYERS_TO_ANALYZE:
     # Skip attention heatmaps to save memory (attentions disabled with SDPA)
     # For 70B models, attention analysis is too memory-intensive
 
-    # SAE attribution — layer 50 only
+    # SAE activation analysis — layer 50 only (no gradients, just activations)
     if layer_idx == SAE_LAYER and sae_W_enc is not None:
-        if sae_layer_grad is not None:
-            h_grad_vec = sae_layer_grad[0, -1, :].to(DEVICE)
-            with torch.no_grad():
-                # Include encoder bias (was missing in original)
-                acts_sae    = torch.matmul(normed_h, sae_W_enc.t()) + sae_b_enc
-                grad_sae    = torch.matmul(h_grad_vec, sae_W_enc.t())
-                attribution = acts_sae * grad_sae
+        with torch.no_grad():
+            # Compute SAE activations (feature magnitudes)
+            acts_sae = torch.matmul(normed_h, sae_W_enc.t()) + sae_b_enc
+            
+            # Use activation magnitude as importance (no gradients available)
+            # This shows which features are most active for this token
+            top_val, top_idx = torch.topk(acts_sae.abs(), 10)
+            sae_results = [
+                {"id": i.item(), "activation": float(acts_sae[i].item())}
+                for i in top_idx
+            ]
 
-                top_val, top_idx = torch.topk(attribution.abs(), 10)
-                sae_results = [
-                    {"id": i.item(), "val": float(attribution[i].item())}
-                    for i in top_idx
-                ]
+        labels = [f"Feature-{x['id']}" for x in sae_results]
+        values = [x['activation'] for x in sae_results]
+        colors = ['coral' if v >= 0 else 'steelblue' for v in values]
 
-            labels = [f"Feature-{x['id']}" for x in sae_results]
-            values = [x['val'] for x in sae_results]
-            colors = ['coral' if v >= 0 else 'steelblue' for v in values]
-
-            plt.figure(figsize=(12, 5))
-            plt.bar(range(10), values, color=colors)
-            plt.xticks(range(10), labels, rotation=45, ha='right')
-            plt.axhline(0, color='black', linewidth=0.8)
-            plt.title(f"Top 10 Goodfire SAE Feature Attributions — Layer {SAE_LAYER}")
-            plt.ylabel("Activation × Gradient")
-            plt.tight_layout()
-            plt.savefig(
-                f"goodfire_70b_out/goodfire_70b_sae_plots/layer_{layer_idx:02d}_sae.png"
-            )
-            plt.close()
-            export_data["sae_top_features"] = sae_results
-            print(f"  Layer {layer_idx:02d}: SAE plot saved ({len(sae_results)} features).")
-        else:
-            print(f"  Layer {layer_idx:02d}: hidden state grad is None — SAE plot skipped.")
+        plt.figure(figsize=(12, 5))
+        plt.bar(range(10), values, color=colors)
+        plt.xticks(range(10), labels, rotation=45, ha='right')
+        plt.axhline(0, color='black', linewidth=0.8)
+        plt.title(f"Top 10 Goodfire SAE Feature Activations — Layer {SAE_LAYER}")
+        plt.ylabel("Feature Activation Magnitude")
+        plt.tight_layout()
+        plt.savefig(
+            f"goodfire_70b_out/goodfire_70b_sae_plots/layer_{layer_idx:02d}_sae.png"
+        )
+        plt.close()
+        export_data["sae_top_features"] = sae_results
+        print(f"  Layer {layer_idx:02d}: SAE activation plot saved ({len(sae_results)} features).")
 
     with open(
         f"goodfire_70b_out/goodfire_70b_sae_json/layer_{layer_idx:02d}_analysis.json", "w"
