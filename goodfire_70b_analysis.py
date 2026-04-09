@@ -261,8 +261,12 @@ for layer_idx in LAYERS_TO_ANALYZE:
     # SAE activation analysis — layer 50 only (no gradients, just activations)
     if layer_idx == SAE_LAYER and sae_W_enc is not None:
         with torch.no_grad():
+            # Ensure SAE weights are on same device as normed_h
+            W_enc_device = sae_W_enc.to(normed_h.device)
+            b_enc_device = sae_b_enc.to(normed_h.device)
+            
             # Compute SAE activations (feature magnitudes)
-            acts_sae = torch.matmul(normed_h, sae_W_enc.t()) + sae_b_enc
+            acts_sae = torch.matmul(normed_h, W_enc_device.t()) + b_enc_device
             
             # Use activation magnitude as importance (no gradients available)
             # This shows which features are most active for this token
