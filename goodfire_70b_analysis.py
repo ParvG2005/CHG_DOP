@@ -98,42 +98,76 @@ print(f"\n--- MODEL FULL RESPONSE ---\n{full_response}\n------------------------
 
 # ── Forward pass with grad tracking ──────────────────────────────────────────
 # Disable attention outputs to save memory (SDPA doesn't support them anyway)
+print("Running forward pass...")
 outputs = model(
     **inputs,
     output_hidden_states=True,
     output_attentions=False  # Critical: saves ~15-20GB on 70B model
 )
 
-hidden_states = outputs.hidden_states
-attentions    = outputs.attentions
+# CRITICAL: Move hidden states to CPU immediately to free GPU memory
+# Only keep SAE layer on GPU for gradient computation
+print("Moving hidden states to CPU to free GPU memory...")
+hidden_states_cpu = []
+for i, h in enumerate(outputs.hidden_states):
+    if i == SAE_LAYER:
+        # Keep SAE layer on GPU and enable gradients
+        h_gpu = h.clone().detach().requires_grad_(True)
+        h_gpu.retain_grad()
+        hidden_states_cpu.append(h_gpu)
+    else:
+        # Move other layers to CPU
+        hidden_states_cpu.append(h.detach().cpu())
 
-# CRITICAL: Only retain gradients for SAE layer (50) to save massive memory
-# Retaining all 80 layers' gradients causes OOM on 70B models
-if hidden_states[SAE_LAYER].requires_grad:
-    hidden_states[SAE_LAYER].retain_grad()
+hidden_states = hidden_states_cpu
+attentions = None  # Not needed
 
-# Skip attention gradients entirely - not needed for SAE analysis
-# and saves huge memory on 70B model
-print(f"Memory optimization: Only retaining gradients for layer {SAE_LAYER}")
-
-# ── Backward from predicted token logit ───────────────────────────────────────
-logits             = outputs.logits
-final_token_logits = logits[0, -1, :]
-predicted_token_id = torch.argmax(final_token_logits).item()
-predicted_word     = tokenizer.decode(predicted_token_id)
-print(f"Model predicted first token: '{predicted_word}'")
-
-# Clear cache before backward pass
+# Clear the original outputs to free memory
+del outputs
 torch.cuda.empty_cache()
 gc.collect()
 
-model.zero_grad()
-# retain_graph=False since we only need one backward pass
-final_token_logits[predicted_token_id].backward(retain_graph=False)
+print(f"Memory optimization: Only layer {SAE_LAYER} kept on GPU with gradients")
 
-# Immediately clear cache after backward
-torch.cuda.empty_cache()
-gc.collect()
+# ── Get prediction and run backward pass ─────────────────────────────────────
+print("Running backward pass (this may take a while with gradient checkpointing)...")
+
+# Run a fresh forward pass just for the backward (hidden states already saved)
+with torch.enable_grad():
+    # Only track gradients for layer 50's hidden state
+    outputs_for_backward = model(
+        **inputs,
+        output_hidden_states=False,  # Don't need to store all hidden states again
+        output_attentions=False
+    )
+    
+    logits = outputs_for_backward.logits
+    final_token_logits = logits[0, -1, :]
+    predicted_token_id = torch.argmax(final_token_logits).item()
+    predicted_word = tokenizer.decode(predicted_token_id)
+    print(f"Model predicted first token: '{predicted_word}'")
+    
+    # Clear cache before backward
+    torch.cuda.empty_cache()
+    gc.collect()
+    
+    model.zero_grad()
+    # Backward pass - gradient checkpointing will recompute activations
+    final_token_logits[predicted_token_id].backward()
+    
+    # Extract gradient from layer 50 before clearing
+    if hidden_states[SAE_LAYER].grad is not None:
+        sae_layer_grad = hidden_states[SAE_LAYER].grad.clone().cpu()
+    else:
+        sae_layer_grad = None
+        print(f"WARNING: No gradient computed for layer {SAE_LAYER}")
+    
+    # Clear everything
+    del outputs_for_backward, logits, final_token_logits
+    torch.cuda.empty_cache()
+    gc.collect()
+
+print("Backward pass complete, GPU memory freed")
 
 # ── Pass 1: collect logit-lens data for every layer (no generate calls here) ──
 print("\nCollecting logit-lens data for all layers ...")
@@ -143,7 +177,8 @@ layer_similarity = []
 
 for layer_idx in LAYERS_TO_ANALYZE:
     target_block = LAYER_PATH(model)[layer_idx]
-    h_raw = hidden_states[layer_idx][0, -1, :].unsqueeze(0).unsqueeze(0)
+    # Hidden states are on CPU, move to GPU temporarily for processing
+    h_raw = hidden_states[layer_idx][0, -1, :].to(DEVICE).unsqueeze(0).unsqueeze(0)
 
     with torch.no_grad():
         normed_h = target_block.input_layernorm(h_raw).squeeze()
@@ -151,8 +186,8 @@ for layer_idx in LAYERS_TO_ANALYZE:
         # Cosine similarity with previous layer
         if layer_idx > 0:
             cos_sim = F.cosine_similarity(
-                hidden_states[layer_idx - 1][0, -1, :].unsqueeze(0),
-                hidden_states[layer_idx    ][0, -1, :].unsqueeze(0)
+                hidden_states[layer_idx - 1][0, -1, :].to(DEVICE).unsqueeze(0),
+                hidden_states[layer_idx    ][0, -1, :].to(DEVICE).unsqueeze(0)
             ).item()
         else:
             cos_sim = 1.0
@@ -263,9 +298,8 @@ for layer_idx in LAYERS_TO_ANALYZE:
 
     # SAE attribution — layer 50 only
     if layer_idx == SAE_LAYER and sae_W_enc is not None:
-        h_grad = hidden_states[layer_idx].grad
-        if h_grad is not None:
-            h_grad_vec = h_grad[0, -1, :]
+        if sae_layer_grad is not None:
+            h_grad_vec = sae_layer_grad[0, -1, :].to(DEVICE)
             with torch.no_grad():
                 # Include encoder bias (was missing in original)
                 acts_sae    = torch.matmul(normed_h, sae_W_enc.t()) + sae_b_enc
