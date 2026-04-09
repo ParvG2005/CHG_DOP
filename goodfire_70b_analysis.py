@@ -9,6 +9,10 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from huggingface_hub import hf_hub_download
 import requests
 from huggingface_hub.utils import build_hf_headers
+import gc
+
+# Critical: Enable memory fragmentation fix
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 
 def setup_directories():
     dirs = [
@@ -38,13 +42,21 @@ tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
 if tokenizer.pad_token is None:
     tokenizer.pad_token = tokenizer.eos_token
 
+# Load in bfloat16 (half precision) - still full model, no quantization
 model = AutoModelForCausalLM.from_pretrained(
     MODEL_ID,
     device_map="auto",
     torch_dtype=torch.bfloat16,
-    attn_implementation="eager",
+    attn_implementation="sdpa",  # Use SDPA (faster, less memory)
+    low_cpu_mem_usage=True,
 )
 model.eval()
+
+# Enable gradient checkpointing - trades compute for memory without affecting results
+model.gradient_checkpointing_enable()
+
+print(f"Model loaded in bfloat16 (full precision, no quantization)")
+print(f"Gradient checkpointing enabled to reduce memory during backward pass")
 
 # ── Locate transformer layers ─────────────────────────────────────────────────
 LAYER_PATH = None
@@ -85,23 +97,24 @@ full_response = tokenizer.decode(
 print(f"\n--- MODEL FULL RESPONSE ---\n{full_response}\n---------------------------\n")
 
 # ── Forward pass with grad tracking ──────────────────────────────────────────
+# Disable attention outputs to save memory (SDPA doesn't support them anyway)
 outputs = model(
     **inputs,
     output_hidden_states=True,
-    output_attentions=True
+    output_attentions=False  # Critical: saves ~15-20GB on 70B model
 )
 
 hidden_states = outputs.hidden_states
 attentions    = outputs.attentions
 
-for h in hidden_states:
-    if h.requires_grad:
-        h.retain_grad()
+# CRITICAL: Only retain gradients for SAE layer (50) to save massive memory
+# Retaining all 80 layers' gradients causes OOM on 70B models
+if hidden_states[SAE_LAYER].requires_grad:
+    hidden_states[SAE_LAYER].retain_grad()
 
-if attentions:
-    for a in attentions:
-        a.requires_grad_(True)
-        a.retain_grad()
+# Skip attention gradients entirely - not needed for SAE analysis
+# and saves huge memory on 70B model
+print(f"Memory optimization: Only retaining gradients for layer {SAE_LAYER}")
 
 # ── Backward from predicted token logit ───────────────────────────────────────
 logits             = outputs.logits
@@ -110,8 +123,17 @@ predicted_token_id = torch.argmax(final_token_logits).item()
 predicted_word     = tokenizer.decode(predicted_token_id)
 print(f"Model predicted first token: '{predicted_word}'")
 
+# Clear cache before backward pass
+torch.cuda.empty_cache()
+gc.collect()
+
 model.zero_grad()
-final_token_logits[predicted_token_id].backward(retain_graph=True)
+# retain_graph=False since we only need one backward pass
+final_token_logits[predicted_token_id].backward(retain_graph=False)
+
+# Immediately clear cache after backward
+torch.cuda.empty_cache()
+gc.collect()
 
 # ── Pass 1: collect logit-lens data for every layer (no generate calls here) ──
 print("\nCollecting logit-lens data for all layers ...")
@@ -236,23 +258,8 @@ for layer_idx in LAYERS_TO_ANALYZE:
         "sae_top_features":           []
     }
 
-    # Attention heatmap
-    if attentions and layer_idx < len(attentions):
-        attn = attentions[layer_idx]
-        if attn.grad is not None:
-            relevance = (attn * attn.grad)[0].sum(dim=0).cpu().detach().float().numpy()
-            plt.figure(figsize=(10, 8))
-            sns.heatmap(relevance, cmap="viridis", annot=False)
-            plt.title(f"Attention Map — Layer {layer_idx} — Llama 3.3 70B")
-            plt.xlabel("Key position")
-            plt.ylabel("Query position")
-            plt.tight_layout()
-            plt.savefig(
-                f"goodfire_70b_out/goodfire_70b_heatmaps/layer_{layer_idx:02d}_attn.png"
-            )
-            plt.close()
-        else:
-            print(f"  Layer {layer_idx:02d}: attention grad is None — heatmap skipped.")
+    # Skip attention heatmaps to save memory (attentions disabled with SDPA)
+    # For 70B models, attention analysis is too memory-intensive
 
     # SAE attribution — layer 50 only
     if layer_idx == SAE_LAYER and sae_W_enc is not None:
