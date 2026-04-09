@@ -82,8 +82,9 @@ saes = {}
 try:
     from sparsify import Sae
     saes = Sae.load_many(SAE_REPO)
-    # saes is a dict keyed by hookpoint e.g. {"layers.0": Sae, "layers.1": Sae, ...}
-    print(f"Loaded SAEs for hookpoints: {list(saes.keys())[:5]} ...")
+    # saes is a dict keyed by hookpoint e.g. {"layers.0.mlp": Sae, "layers.1.mlp": Sae, ...}
+    print(f"Loaded {len(saes)} SAEs from {SAE_REPO}")
+    print(f"Available hookpoints: {sorted(saes.keys())}")
 except ImportError:
     print("WARNING: 'sparsify' not installed. Run: pip install sparsify")
     print("SAE plots will be skipped. Install sparsify and re-run for full analysis.")
@@ -269,8 +270,8 @@ for layer_idx in LAYERS_TO_ANALYZE:
 
     # ── SAE feature attribution ───────────────────────────────────────────────
     # FIX 10: use Sae library object directly instead of manual safetensors loading.
-    # Hookpoint format is "layers.N" (not "layers_N" or "layer.N").
-    hookpoint = f"layers.{layer_idx}"
+    # Hookpoint format is "layers.N.mlp" for EleutherAI SAEs (trained on MLP output)
+    hookpoint = f"layers.{layer_idx}.mlp"
     sae = saes.get(hookpoint, None)
 
     if sae is not None:
@@ -313,9 +314,7 @@ for layer_idx in LAYERS_TO_ANALYZE:
                 print(f"  Layer {layer_idx:02d}: SAE attribution failed — {e}")
         else:
             print(f"  Layer {layer_idx:02d}: hidden state grad is None — SAE skipped.")
-    else:
-        if saes:  # only warn if SAEs loaded but this layer is missing
-            print(f"  Layer {layer_idx:02d}: no SAE found for hookpoint '{hookpoint}'.")
+    # Don't print warning for every missing SAE - will summarize at the end
 
     export_data["sae_top_features"] = sae_results
 
@@ -343,5 +342,13 @@ ax2.grid(True, linestyle="--", alpha=0.6)
 plt.tight_layout()
 plt.savefig("llama_out/llama_layer_dynamics/overall_dynamics.png")
 plt.close()
+
+# Print SAE coverage summary
+if saes:
+    available_layers = [int(hp.split('.')[1]) for hp in saes.keys() if hp.startswith('layers.')]
+    print(f"\n{'='*60}")
+    print(f"SAE Coverage: {len(available_layers)}/{num_layers} layers")
+    print(f"Available SAE layers: {sorted(available_layers)}")
+    print(f"{'='*60}")
 
 print("\nAnalysis complete. All outputs written to llama_out/")
